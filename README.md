@@ -2,6 +2,9 @@
 
 ## Köra appen lokalt
 
+1. Sätt `DATABASE_URL` till din Postgres-instans (ex. via `.env` + export).
+2. Installera beroenden och starta:
+
 ```bash
 npm install
 npm run dev
@@ -9,57 +12,21 @@ npm run dev
 
 Öppna sedan `http://localhost:3000`.
 
----
+## Databas
 
-## Deploy till Heroku (nuvarande app med SQLite)
+Appen använder Postgres via `pg`.
 
-Den här appen använder **SQLite** (`better-sqlite3`). Den kan köras på Heroku, men databasen blir då **tillfällig** (ephemeral) eftersom dynons filsystem återställs vid omstart/deploy.
+- Databasanslutning läses från `DATABASE_URL`.
+- Vid start körs `init.sql` för att skapa tabeller vid behov.
 
-I den här repo-konfigurationen används:
-
-- `Procfile` med `web: npm start`
-- `PORT` från Heroku (redan stöds i `server.js`)
-- `DB_PATH=/tmp/crm.db` automatiskt på Heroku (via `DYNO`)
-
-### 1) Skapa app
+## Deploy till Heroku
 
 ```bash
-heroku create <your-app-name>
-```
+heroku addons:create heroku-postgresql:essential-standard
+heroku config:set NODE_ENV=production
+heroku config:set NPM_CONFIG_PRODUCTION=false
 
-### 2) Deploya
-
-```bash
 git push heroku main
 ```
 
-### 3) Kontrollera loggar
-
-```bash
-heroku logs --tail
-```
-
-Du ska se att servern startar och att DB initieras i `/tmp/crm.db`.
-
----
-
-## Viktigt om data på Heroku
-
-Med nuvarande SQLite-upplägg försvinner data när dynon startas om.
-
-Om du behöver persistent data i produktion bör appen byggas om till Postgres (Heroku Postgres). Denna kodbas är ännu inte migrerad till Postgres-frågor/driver.
-
----
-
-## Miljövariabler
-
-Valfria variabler:
-
-- `PORT` – sätts automatiskt av Heroku
-- `DB_PATH` – tvinga egen SQLite-sökväg
-
-Exempel lokalt:
-
-```bash
-DB_PATH="./crm.db" npm start
-```
+Heroku sätter `DATABASE_URL` automatiskt när Postgres add-on är aktiverad.
