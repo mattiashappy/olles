@@ -24,6 +24,9 @@
   .nav-logo-circle{width:32px;height:32px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;}
   .nav-badge{background:var(--orange);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600;}
   .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px;color:#aaa;}
+  .nav-link{color:#ddd;text-decoration:none;font-size:12px;font-weight:700;padding:6px 10px;border:1px solid #555;border-radius:999px;cursor:pointer;transition:all .15s;}
+  .nav-link:hover{border-color:var(--orange);color:var(--orange);}
+  .nav-link.active{background:var(--orange);border-color:var(--orange);color:#fff;}
   .ws-dot{width:8px;height:8px;border-radius:50%;background:#666;transition:background .3s;}
   .ws-dot.connected{background:#4CAF50;animation:pulse 2s infinite;}
   .ws-dot.error{background:#F44336;}
@@ -159,6 +162,7 @@
     </div>
     <span id="clock">--:--</span>
     <span id="nav-loc-name" style="font-weight:600;color:#fff">—</span>
+    <a class="nav-link" id="nav-tabell-link" onclick="openTabellFromNav()">Tabell</a>
   </div>
 </div>
 
@@ -208,6 +212,24 @@
       <table class="tbl"><thead><tr>
         <th>Reg.nr</th><th>Kund</th><th>Tjänst</th><th>Tid</th><th>Inkört</th><th>Status</th><th>Pris</th><th>Åtgärd</th>
       </tr></thead><tbody id="dagsvy-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- TABELL -->
+  <div class="page" id="page-tabell">
+    <div class="section-header">
+      <h2>Tabell – Kunddata plan</h2>
+      <span class="text-muted text-sm">En enklare tabell att bygga vidare på.</span>
+    </div>
+    <div class="card">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Reg.nr</th><th>Kund</th><th>Telefon</th><th>Tjänst</th><th>Datum</th><th>Status</th><th>Pris</th><th>Anteckningar</th>
+          </tr>
+        </thead>
+        <tbody id="tabell-tbody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -545,8 +567,17 @@ async function saveNewLocation() {
 // ══════════════════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════════════════
+async function openTabellFromNav() {
+  if(currentLocId === null) {
+    if(!locations.length) return;
+    await switchLocation(locations[0].id);
+  }
+  showTab('tabell');
+}
+
 function showTab(tab) {
   currentTab = tab;
+  document.getElementById('nav-tabell-link').classList.toggle('active', tab === 'tabell');
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const tabIds = ['dagsvy','bokningar','obokade','dagskassa','oversikt'];
   const allTabs = document.querySelectorAll('.tab');
@@ -562,6 +593,7 @@ function refreshCurrentView() {
   if(currentLocId === null) { renderOversikt(); return; }
   if(currentTab==='dagsvy')    renderDagsvy();
   if(currentTab==='bokningar') renderBokningar();
+  if(currentTab==='tabell')    renderTabell();
   if(currentTab==='obokade')   renderObokade();
   if(currentTab==='dagskassa') renderKassa();
 }
@@ -686,6 +718,22 @@ function renderBokningar() {
       <td><button class="btn btn-outline btn-sm" onclick="editBooking(${b.id})">✏ Redigera</button></td>
     </tr>
   `).join('')||'<tr><td colspan="8" class="no-data">Inga bokningar</td></tr>';
+}
+
+function renderTabell() {
+  const rows = [...bookings].sort((a,b)=>(`${b.date} ${b.time}`).localeCompare(`${a.date} ${a.time}`));
+  document.getElementById('tabell-tbody').innerHTML = rows.length ? rows.map(b=>`
+    <tr>
+      <td><span class="reg-pill">${b.regNr}</span></td>
+      <td>${b.name||'—'}</td>
+      <td>${b.phone||'—'}</td>
+      <td style="font-size:12px">${b.service||'—'}</td>
+      <td>${fmtDate(b.date)} ${b.time||''}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td class="fw700">${b.price?b.price.toLocaleString('sv-SE')+' kr':'—'}</td>
+      <td>${b.notes||'<span class="text-muted">—</span>'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="8" class="no-data">Ingen kunddata ännu</td></tr>';
 }
 
 function renderObokade() {
