@@ -5,6 +5,13 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
+const { executeWithRetry } = require('../lib/retry');
+const {
+  startConnectorRun,
+  markConnectorSuccess,
+  markConnectorFailure,
+  logLineage,
+} = require('../lib/monitoring');
 
 function nowTime() {
   return new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
@@ -17,6 +24,16 @@ async function processPlate(regNr, direction, locationId, cameraId, confidence, 
   const today = todayStr();
   const t = nowTime();
   regNr = regNr.toUpperCase().replace(/\s/g, '');
+
+  await logLineage({
+    connectorName: 'anpr',
+    entityKey: regNr,
+    sourceStage: 'source',
+    sourceIdentifier: cameraId,
+    targetStage: 'staging',
+    targetIdentifier: 'anpr_events',
+    metadata: { direction, locationId, confidence },
+  });
 
   const bookingResult = await query(
     `SELECT * FROM bookings
@@ -69,6 +86,18 @@ async function processPlate(regNr, direction, locationId, cameraId, confidence, 
     [locationId, regNr, direction, confidence || null, cameraId || null, matchedId]
   );
 
+  if (matchedId) {
+    await logLineage({
+      connectorName: 'anpr',
+      entityKey: regNr,
+      sourceStage: 'staging',
+      sourceIdentifier: 'anpr_events',
+      targetStage: 'mart',
+      targetIdentifier: `bookings:${matchedId}`,
+      metadata: { action },
+    });
+  }
+
   let updatedBooking = null;
   if (matchedId) {
     const rowRes = await query('SELECT * FROM bookings WHERE id = $1', [matchedId]);
@@ -106,18 +135,32 @@ async function processPlate(regNr, direction, locationId, cameraId, confidence, 
     booking: updatedBooking,
   };
 
+  await logLineage({
+    connectorName: 'anpr',
+    entityKey: regNr,
+    sourceStage: matchedId ? 'mart' : 'staging',
+    sourceIdentifier: matchedId ? `bookings:${matchedId}` : 'anpr_events',
+    targetStage: 'dashboard',
+    targetIdentifier: 'websocket_feed',
+    metadata: { action, matched: !!booking },
+  });
+
   broadcast(event);
   return event;
 }
 
 router.post('/webhook', async (req, res) => {
+  const runId = await startConnectorRun('anpr');
   try {
     const body = req.body;
     const data = body.data || body;
     const cameraId = data.camera_id || 'unknown';
     const results = data.results || [];
 
-    if (!results.length) return res.json({ ok: true, skipped: 'no_results' });
+    if (!results.length) {
+      await markConnectorSuccess(runId, 'anpr', 0);
+      return res.json({ ok: true, skipped: 'no_results' });
+    }
 
     let locationId = 'falun';
     let direction = 'in';
@@ -133,11 +176,16 @@ router.post('/webhook', async (req, res) => {
     }
 
     const best = results.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-    const event = await processPlate(best.plate, direction, locationId, cameraId, best.score, req.app.get('broadcast'));
+    const event = await executeWithRetry(
+      async () => processPlate(best.plate, direction, locationId, cameraId, best.score, req.app.get('broadcast')),
+      { retries: 3, baseDelayMs: 200 }
+    );
 
+    await markConnectorSuccess(runId, 'anpr', event.booking ? 1 : 0);
     res.json({ ok: true, event });
   } catch (err) {
     console.error('[ANPR webhook error]', err);
+    await markConnectorFailure(runId, 'anpr', err, 3, req.body);
     res.status(500).json({ error: err.message });
   }
 });
@@ -148,8 +196,19 @@ router.post('/simulate', async (req, res) => {
     return res.status(400).json({ error: 'regNr, direction och locationId krävs' });
   }
 
-  const event = await processPlate(regNr, direction, locationId, cameraId || `${locationId}_${direction}`, null, req.app.get('broadcast'));
-  res.json({ ok: true, event });
+  const runId = await startConnectorRun('anpr_simulation');
+  try {
+    const event = await executeWithRetry(
+      async () => processPlate(regNr, direction, locationId, cameraId || `${locationId}_${direction}`, null, req.app.get('broadcast')),
+      { retries: 2, baseDelayMs: 150 }
+    );
+
+    await markConnectorSuccess(runId, 'anpr_simulation', event.booking ? 1 : 0);
+    res.json({ ok: true, event });
+  } catch (error) {
+    await markConnectorFailure(runId, 'anpr_simulation', error, 2, req.body);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.get('/events', async (req, res) => {
