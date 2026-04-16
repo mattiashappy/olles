@@ -25,6 +25,19 @@ router.get('/export', async (req, res) => {
     return res.status(404).json({ error: 'Inga slutförda arbeten för detta datum och anläggning' });
   }
 
+  await Promise.all(rows.map((row) =>
+    query(
+      `INSERT INTO fortnox_exports (booking_id, location_id, export_date, price, service, reg_nr)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (booking_id, export_date) DO UPDATE SET
+         exported_at = CURRENT_TIMESTAMP,
+         price = EXCLUDED.price,
+         service = EXCLUDED.service,
+         reg_nr = EXCLUDED.reg_nr`,
+      [row.id, row.location_id, date, row.price || 0, row.service || null, row.reg_nr]
+    )
+  ));
+
   const header = 'RegNr;Kund;Telefon;Tjänst;Pris;Datum;Klar;Anläggning';
   const csvRows = rows.map((r) =>
     [r.reg_nr, r.customer_name || 'Okänd', r.phone || '', r.service || '', r.price || 0, r.booking_date, r.completed_at || '', r.location_name].join(';')
