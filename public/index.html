@@ -24,6 +24,9 @@
   .nav-logo-circle{width:32px;height:32px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;}
   .nav-badge{background:var(--orange);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600;}
   .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px;color:#aaa;}
+  .nav-link{color:#ddd;text-decoration:none;font-size:12px;font-weight:700;padding:6px 10px;border:1px solid #555;border-radius:999px;cursor:pointer;transition:all .15s;}
+  .nav-link:hover{border-color:var(--orange);color:var(--orange);}
+  .nav-link.active{background:var(--orange);border-color:var(--orange);color:#fff;}
   .ws-dot{width:8px;height:8px;border-radius:50%;background:#666;transition:background .3s;}
   .ws-dot.connected{background:#4CAF50;animation:pulse 2s infinite;}
   .ws-dot.error{background:#F44336;}
@@ -168,6 +171,7 @@
     </div>
     <span id="clock">--:--</span>
     <span id="nav-loc-name" style="font-weight:600;color:#fff">—</span>
+    <a class="nav-link" id="nav-tabell-link" onclick="openTabellFromNav()">Tabell</a>
   </div>
 </div>
 
@@ -261,7 +265,7 @@
   <!-- TABELL -->
   <div class="page" id="page-tabell">
     <div class="section-header">
-      <h2>🧾 Tabell – Kunddata plan</h2>
+      <h2>Tabell – Kunddata plan</h2>
       <span class="text-muted text-sm">En enklare tabell att bygga vidare på.</span>
     </div>
     <div class="card">
@@ -610,8 +614,17 @@ async function saveNewLocation() {
 // ══════════════════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════════════════
+async function openTabellFromNav() {
+  if(currentLocId === null) {
+    if(!locations.length) return;
+    await switchLocation(locations[0].id);
+  }
+  showTab('tabell');
+}
+
 function showTab(tab) {
   currentTab = tab;
+  document.getElementById('nav-tabell-link').classList.toggle('active', tab === 'tabell');
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const tabIds = ['dagsvy','bokningar','tabell','obokade','dagskassa','oversikt'];
   const allTabs = document.querySelectorAll('.tab');
