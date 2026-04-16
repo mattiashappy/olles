@@ -1,75 +1,65 @@
 # olles
 
-## Deploying to Heroku with Postgres
-
-You can deploy this app to Heroku and connect it to PostgreSQL by using a `DATABASE_URL` environment variable.
-
-> Important: the connection string shared in chat appears to contain real credentials. Rotate/reset that database password before using it in production.
-
-### 1) Configure environment variables
-
-Heroku automatically provides `DATABASE_URL` for attached Postgres add-ons.
-For local development, create a `.env` file:
+## Köra appen lokalt
 
 ```bash
-DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DB_NAME"
+npm install
+npm run dev
 ```
 
-### 2) Parse SSL correctly (required on Heroku Postgres)
-
-Most Heroku Postgres plans require SSL/TLS. Ensure your app enables SSL for database connections.
-
-- **Node (`pg`)**: use `ssl: { rejectUnauthorized: false }` when on Heroku.
-- **Python (`psycopg` / SQLAlchemy)**: append `?sslmode=require` if missing.
-- **Ruby (`pg` / Rails)**: set `sslmode: require` in database config for production.
-
-### 3) Heroku app setup
-
-```bash
-heroku create <your-app-name>
-heroku addons:create heroku-postgresql:mini
-heroku config
-```
-
-### 4) If you must set an external database URL
-
-If you are not using a Heroku-managed Postgres instance:
-
-```bash
-heroku config:set DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DB_NAME"
-```
-
-### 5) Release, migrate, and run
-
-Make sure your app has:
-
-- a valid startup command (for example via `Procfile`),
-- dependency lock files,
-- migration command in release phase (optional but recommended).
-
-Example `Procfile` patterns:
-
-```Procfile
-web: <your-start-command>
-# optional
-release: <your-migration-command>
-```
-
-Then deploy:
-
-```bash
-git push heroku <branch>:main
-heroku logs --tail
-```
-
-### 6) Verify DB connectivity
-
-```bash
-heroku run "printenv DATABASE_URL"
-```
-
-Then open your app and confirm DB-backed features (create/read/update/delete) work as expected.
+Öppna sedan `http://localhost:3000`.
 
 ---
 
-If you want, I can next add framework-specific files (e.g., `Procfile`, runtime config, and migration release command) once you share your app stack (Node, Django, Rails, etc.).
+## Deploy till Heroku (nuvarande app med SQLite)
+
+Den här appen använder **SQLite** (`better-sqlite3`). Den kan köras på Heroku, men databasen blir då **tillfällig** (ephemeral) eftersom dynons filsystem återställs vid omstart/deploy.
+
+I den här repo-konfigurationen används:
+
+- `Procfile` med `web: npm start`
+- `PORT` från Heroku (redan stöds i `server.js`)
+- `DB_PATH=/tmp/crm.db` automatiskt på Heroku (via `DYNO`)
+
+### 1) Skapa app
+
+```bash
+heroku create <your-app-name>
+```
+
+### 2) Deploya
+
+```bash
+git push heroku main
+```
+
+### 3) Kontrollera loggar
+
+```bash
+heroku logs --tail
+```
+
+Du ska se att servern startar och att DB initieras i `/tmp/crm.db`.
+
+---
+
+## Viktigt om data på Heroku
+
+Med nuvarande SQLite-upplägg försvinner data när dynon startas om.
+
+Om du behöver persistent data i produktion bör appen byggas om till Postgres (Heroku Postgres). Denna kodbas är ännu inte migrerad till Postgres-frågor/driver.
+
+---
+
+## Miljövariabler
+
+Valfria variabler:
+
+- `PORT` – sätts automatiskt av Heroku
+- `DB_PATH` – tvinga egen SQLite-sökväg
+
+Exempel lokalt:
+
+```bash
+DB_PATH="./crm.db" npm start
+```

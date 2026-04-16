@@ -5,12 +5,16 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "heroku-postbuild": "echo \"No build step required\""
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "ws": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

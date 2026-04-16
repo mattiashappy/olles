@@ -6,7 +6,7 @@
 const Database = require('better-sqlite3');
 const path     = require('path');
 
-const DB_PATH = path.join(__dirname, 'crm.db');
+const DB_PATH = process.env.DB_PATH || (process.env.DYNO ? '/tmp/crm.db' : path.join(__dirname, 'crm.db'));
 let db;
 
 function getDb() {
@@ -71,6 +71,9 @@ function initDb() {
   seedIfEmpty(db);
 
   console.log('[DB] Databas initierad:', DB_PATH);
+  if (process.env.DYNO) {
+    console.warn('[DB] Kör på Heroku dyno med SQLite. Data ligger på tillfällig disk (/tmp) och försvinner vid restart/deploy.');
+  }
   return db;
 }
 

@@ -1,0 +1,4 @@
+*.sqlite
+*.sqlite3
+crm.db
+npm-debug.log
