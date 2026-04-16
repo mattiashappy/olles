@@ -14,6 +14,7 @@ const bookingsRouter = require('./routes/bookings');
 const locationsRouter = require('./routes/locations');
 const anprRouter = require('./routes/anpr');
 const fortnoxRouter = require('./routes/fortnox');
+const monitoringRouter = require('./routes/monitoring');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/locations', locationsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/anpr', anprRouter);
 app.use('/api/fortnox', fortnoxRouter);
+app.use('/api/monitoring', monitoringRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
