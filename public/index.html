@@ -171,6 +171,7 @@
 <div class="tabs" id="main-tabs">
   <div class="tab active" onclick="showTab('dagsvy')">📋 Dagsvy <span class="tab-badge" id="tab-badge-inkort">0</span></div>
   <div class="tab" onclick="showTab('bokningar')">📅 Bokningar</div>
+  <div class="tab" onclick="showTab('tabell')">🧾 Tabell</div>
   <div class="tab" onclick="showTab('obokade')">🚨 Ej bokade <span class="tab-badge" id="tab-badge-ejbokad" style="background:var(--red)">0</span></div>
   <div class="tab" onclick="showTab('dagskassa')">💰 Dagskassa</div>
   <div class="tab overview-tab" style="display:none" onclick="showTab('oversikt')">🏢 Översikt</div>
@@ -208,6 +209,24 @@
       <table class="tbl"><thead><tr>
         <th>Reg.nr</th><th>Kund</th><th>Tjänst</th><th>Tid</th><th>Inkört</th><th>Status</th><th>Pris</th><th>Åtgärd</th>
       </tr></thead><tbody id="dagsvy-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- TABELL -->
+  <div class="page" id="page-tabell">
+    <div class="section-header">
+      <h2>🧾 Tabell – Kunddata plan</h2>
+      <span class="text-muted text-sm">En enklare tabell att bygga vidare på.</span>
+    </div>
+    <div class="card">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Reg.nr</th><th>Kund</th><th>Telefon</th><th>Tjänst</th><th>Datum</th><th>Status</th><th>Pris</th><th>Anteckningar</th>
+          </tr>
+        </thead>
+        <tbody id="tabell-tbody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -548,7 +567,7 @@ async function saveNewLocation() {
 function showTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  const tabIds = ['dagsvy','bokningar','obokade','dagskassa','oversikt'];
+  const tabIds = ['dagsvy','bokningar','tabell','obokade','dagskassa','oversikt'];
   const allTabs = document.querySelectorAll('.tab');
   const idx = tabIds.indexOf(tab);
   if(allTabs[idx]) allTabs[idx].classList.add('active');
@@ -562,6 +581,7 @@ function refreshCurrentView() {
   if(currentLocId === null) { renderOversikt(); return; }
   if(currentTab==='dagsvy')    renderDagsvy();
   if(currentTab==='bokningar') renderBokningar();
+  if(currentTab==='tabell')    renderTabell();
   if(currentTab==='obokade')   renderObokade();
   if(currentTab==='dagskassa') renderKassa();
 }
@@ -686,6 +706,22 @@ function renderBokningar() {
       <td><button class="btn btn-outline btn-sm" onclick="editBooking(${b.id})">✏ Redigera</button></td>
     </tr>
   `).join('')||'<tr><td colspan="8" class="no-data">Inga bokningar</td></tr>';
+}
+
+function renderTabell() {
+  const rows = [...bookings].sort((a,b)=>(`${b.date} ${b.time}`).localeCompare(`${a.date} ${a.time}`));
+  document.getElementById('tabell-tbody').innerHTML = rows.length ? rows.map(b=>`
+    <tr>
+      <td><span class="reg-pill">${b.regNr}</span></td>
+      <td>${b.name||'—'}</td>
+      <td>${b.phone||'—'}</td>
+      <td style="font-size:12px">${b.service||'—'}</td>
+      <td>${fmtDate(b.date)} ${b.time||''}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td class="fw700">${b.price?b.price.toLocaleString('sv-SE')+' kr':'—'}</td>
+      <td>${b.notes||'<span class="text-muted">—</span>'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="8" class="no-data">Ingen kunddata ännu</td></tr>';
 }
 
 function renderObokade() {
