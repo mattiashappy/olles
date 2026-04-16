@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch server.js",
-    "heroku-postbuild": "echo \"No build step required\""
+    "heroku-postbuild": "echo \"No build step required\"",
+    "reporting:ingest": "node scripts/run_reporting_ingestion.js",
+    "reporting:transform": "node scripts/run_reporting_transforms.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
