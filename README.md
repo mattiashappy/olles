@@ -89,3 +89,16 @@ git push heroku main
 ```
 
 Heroku sätter `DATABASE_URL` automatiskt när Postgres add-on är aktiverad.
+
+## Reporting layer (PostgreSQL)
+
+A canonical analytics layer is available in PostgreSQL with `raw`, `clean`, `mart`, and `metadata` schemas.
+
+Initialize + run pipeline:
+
+```bash
+npm run reporting:ingest
+npm run reporting:transform
+```
+
+See `analytics/README.md` for source scope, model conventions, and SLAs.
