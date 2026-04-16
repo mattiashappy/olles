@@ -136,6 +136,15 @@
 
   .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
+  .quick-entry-card{margin-bottom:20px;}
+  .quick-entry-table-wrap{overflow-x:auto;}
+  .quick-entry-table{min-width:1200px;}
+  .quick-entry-table td{background:#fff;}
+  .quick-entry-table input,.quick-entry-table select{min-width:120px;font-size:12px;padding:7px 9px;}
+  .quick-entry-table .quick-notes{min-width:220px;}
+  .quick-entry-table .quick-action-cell{white-space:nowrap;}
+  .quick-entry-title-note{font-size:12px;color:var(--muted);font-weight:500;}
+
   @media(max-width:768px){
     .kpi-row{grid-template-columns:repeat(2,1fr);}
     .grid2{grid-template-columns:1fr;}
@@ -180,6 +189,43 @@
 
   <!-- DAGSVY -->
   <div class="page active" id="page-dagsvy">
+    <div class="card quick-entry-card">
+      <div class="card-title">
+        <div class="icon">🧾</div>
+        Snabbregistrering i stor tabell
+        <span class="quick-entry-title-note">Lägg in all data direkt från toppen av sidan.</span>
+      </div>
+      <div class="quick-entry-table-wrap">
+        <table class="tbl quick-entry-table">
+          <thead>
+            <tr>
+              <th>Reg.nr *</th><th>Kund</th><th>Telefon</th><th>Tjänst</th><th>Datum</th><th>Tid</th><th>Pris</th><th>Anteckningar</th><th>Åtgärd</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input id="quick-regnr" placeholder="ABC123" maxlength="7" style="text-transform:uppercase"></td>
+              <td><input id="quick-name" placeholder="Förnamn Efternamn"></td>
+              <td><input id="quick-phone" placeholder="070-XXX XX XX"></td>
+              <td>
+                <select id="quick-service" onchange="updateQuickPrice()">
+                  <option>Helrekond – 2 495 kr</option><option>Standard – 1 295 kr</option>
+                  <option>Invändig – 795 kr</option><option>Polering – 2 995 kr</option>
+                  <option>Keramiskt lackskydd – 6 449 kr</option><option>Begagnat rekond – 2 500 kr</option>
+                  <option value="Övrigt">Övrigt – ange pris</option>
+                </select>
+              </td>
+              <td><input type="date" id="quick-date"></td>
+              <td><input type="time" id="quick-time"></td>
+              <td><input type="number" id="quick-price" placeholder="0"></td>
+              <td><input id="quick-notes" class="quick-notes" placeholder="Valfri notering..."></td>
+              <td class="quick-action-cell"><button class="btn btn-primary" onclick="saveQuickBooking()">+ Lägg till</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="anpr-panel">
       <div class="anpr-panel-title">
         <div class="ws-dot connected" style="width:10px;height:10px"></div>
@@ -871,6 +917,52 @@ function openNewBookingModal() {
   document.getElementById('booking-modal').classList.add('open');
 }
 
+function resetQuickEntryForm() {
+  document.getElementById('quick-regnr').value = '';
+  document.getElementById('quick-name').value = '';
+  document.getElementById('quick-phone').value = '';
+  document.getElementById('quick-service').value = 'Helrekond – 2 495 kr';
+  document.getElementById('quick-date').value = today();
+  document.getElementById('quick-time').value = '09:00';
+  document.getElementById('quick-price').value = SERVICE_PRICES['Helrekond – 2 495 kr'];
+  document.getElementById('quick-notes').value = '';
+}
+
+function updateQuickPrice() {
+  const svc = document.getElementById('quick-service').value;
+  const price = SERVICE_PRICES[svc];
+  if(price !== undefined) document.getElementById('quick-price').value = price;
+}
+
+async function saveQuickBooking() {
+  const regNr = document.getElementById('quick-regnr').value.trim().toUpperCase();
+  if(!regNr) {
+    toast('Ange reg.nr i snabbtabellen', 'red');
+    return;
+  }
+  const data = {
+    locationId: currentLocId,
+    regNr,
+    name: document.getElementById('quick-name').value.trim(),
+    phone: document.getElementById('quick-phone').value.trim(),
+    service: document.getElementById('quick-service').value,
+    date: document.getElementById('quick-date').value || today(),
+    time: document.getElementById('quick-time').value || '09:00',
+    price: parseInt(document.getElementById('quick-price').value) || 0,
+    notes: document.getElementById('quick-notes').value.trim()
+  };
+  try {
+    const created = await apiPost('/api/bookings', data);
+    bookings.push(created);
+    toast(`Bokning skapad – ${regNr}`, 'green');
+    resetQuickEntryForm();
+    refreshCurrentView();
+    document.getElementById('quick-regnr').focus();
+  } catch(e) {
+    toast('Fel: ' + e.message, 'red');
+  }
+}
+
 function editBooking(id) {
   editingId = id;
   const b   = bookings.find(x=>x.id===id);
@@ -954,6 +1046,9 @@ function updateClock(){ document.getElementById('clock').textContent=new Date().
 updateClock();
 setInterval(updateClock, 10000);
 document.getElementById('anpr-sim-input').addEventListener('keydown', e=>{ if(e.key==='Enter') simulateANPR(); });
+document.getElementById('quick-regnr').addEventListener('keydown', e=>{ if(e.key==='Enter') saveQuickBooking(); });
+document.getElementById('quick-notes').addEventListener('keydown', e=>{ if(e.key==='Enter') saveQuickBooking(); });
+resetQuickEntryForm();
 connectWS();
 loadLocations();
 </script>
